@@ -33,6 +33,12 @@ export const HEADER_TOTAL_HEIGHT = MONTH_HEADER_HEIGHT + WEEKDAY_BAR_HEIGHT
 
 // ─── Chip metrics (shared by Skia drawing and React chips) ──────────────────
 export const CHIP_BORDER_RADIUS = 2.5
+/**
+ * Fixed chip height. Tailtime derives this from Skia font metrics
+ * (round(lineHeight of 9px Poppins SemiBold) + 2 * CHIP_PADDING_V = 14);
+ * pinned here so React-view chips match the Skia canvas exactly.
+ */
+export const CHIP_HEIGHT = 14
 export const CHIP_PADDING_H = 3
 export const CHIP_PADDING_V = 0.5
 export const CHIP_FONT_SIZE = 9
@@ -55,6 +61,17 @@ export const COLOR_IN_PAGE_LABEL = '#262626' // app-neutral-800
 export const MORE_CHIP_BG = '#E08011' // app-peach-300
 export const MORE_CHIP_TEXT = '#FFFFFF'
 export const FALLBACK_CHIP_BG = '#E08011'
+
+/**
+ * Max visible chips for a cell height — pure so every calendar tab resolves
+ * the same count from the same measured cell height.
+ */
+export function resolveMaxVisibleChips(cellHeight: number, preferredMax: number = DEFAULT_MAX_VISIBLE_CHIPS): number {
+  if (cellHeight <= 0) return preferredMax
+  const maxRows = preferredMax + 1
+  const needed = CHIP_AREA_TOP + maxRows * CHIP_HEIGHT + (maxRows - 1) * CHIP_GAP - 1
+  return cellHeight >= needed ? preferredMax : Math.max(1, preferredMax - 1)
+}
 
 // Day-number typography (Skia baseline geometry mirrored by React cells).
 export const DAY_NUMBER_FONT_SIZE = 10

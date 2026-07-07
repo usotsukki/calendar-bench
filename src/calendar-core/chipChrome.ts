@@ -1,7 +1,6 @@
 import { contrastingForegroundColor, normalizeHexColor, relativeLuminance } from './colorContrast'
 import { FALLBACK_CHIP_BG } from './constants'
 import type { MonthEventRow } from './types'
-import { isSpanEligibleEvent } from './monthSpanLayout'
 
 /** How much to lighten (blend toward white) or darken the event color for chip chrome. */
 const CHIP_TINT_STEP = 0.2
@@ -89,5 +88,3 @@ export function getSpanChipChrome(event: MonthEventRow): ChipChrome {
   chromeCache.set(cacheKey, result)
   return result
 }
-
-export { isSpanEligibleEvent }
