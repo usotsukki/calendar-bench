@@ -25,7 +25,9 @@ The Tailtime tab draws scenes onto a Skia canvas; the Wix and Flash tabs render 
 ## Library-specific shims
 
 - **Wix**: the page month for a day cell is inferred from `state === 'disabled'` (extra days); `showSixWeeks` keeps the fixed 6-row grid.
-- **Flash**: the library yields a month's natural week count (5 or 6); 5-week months are padded with the scene's trailing row to hold the 6-row grid.
+- **Wix, patched** (`patches/react-native-calendars+1.1314.0.patch`): the six-weeks heuristic in `page()` counts leading days Sunday-based regardless of `firstDay`, so Monday-first grids randomly get a 7th week row — which breaks CalendarList's fixed-height `getItemLayout` math (items only get `minHeight`). The patch counts leading days in the configured week system.
+- **Wix, layout**: `CalendarList` captures `calendarHeight` in a deps-less `getItemLayout` closure and only forwards a subset of ScrollView props (`pagingEnabled` yes, `snapToInterval` no). The tab hard-caps item height via `calendarStyle`, uses `pagingEnabled`, and remounts the list when the measured viewport settles. Scroll range is ±60 months — wix materialises every month row up front, unlike the other two tabs which run the full 2000–2199 window.
+- **Flash**: the library yields a month's natural week count (5 or 6); 5-week months are padded with the scene's trailing row to hold the 6-row grid. The list remounts when the measured viewport settles so `initialScrollIndex` uses the final page height.
 - Multi-day span bars in the React `DayCell` are drawn once at their start cell and overflow across neighbour cells (cells are transparent; the page provides the background).
 
 ## Scope
