@@ -1,56 +1,42 @@
-# Welcome to your Expo app 👋
+# calendar-bench
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A comparison playground: the same vertically scrollable monthly calendar built three times with different composition tools, all rendering the same persisted events identically.
 
-## Get started
+## Tabs
 
-1. Install dependencies
+| Tab | Composition | What drives it |
+| --- | --- | --- |
+| **Tailtime** | Custom in-house solution ported from the Tailtime app | `FlashList` pages one month per viewport; each month is painted by a single Skia `Picture` (grid, day numbers, today circle, span bars, chip stacks) |
+| **Wix** | [`react-native-calendars`](https://github.com/wix/react-native-calendars) | `CalendarList` with `showSixWeeks`, a custom `dayComponent`, and theme stylesheet overrides to zero out the library's own paddings |
+| **Flash** | [`@marceloterreiro/flash-calendar`](https://github.com/MarceloPrado/flash-calendar) | The library's composable path: `useCalendarList` drives the month list, `useCalendar` provides week/day metadata per month |
+| **Events** | — | Create/delete single or recurring events (daily/weekly/monthly, optional until-date). Persisted with zustand + AsyncStorage; every calendar tab renders from this store |
 
-   ```bash
-   npm install
-   ```
+## How the views stay identical
 
-2. Start the app
+All layout and visual math lives in `src/calendar-core/` and is shared by every implementation:
 
-   ```bash
-   npx expo start
-   ```
+- **Scene builder** (`scene.ts`, `monthSpanLayout.ts`, `chipStack.ts`) — resolves each month's 6×7 grid into cells with sorted events, multi-day span slot assignment, visible chip stacks and `+N more` overflow counts. Ported from Tailtime.
+- **Chip chrome** (`chipChrome.ts`, `colorContrast.ts`) — the tint/darken + WCAG-contrast color algorithm that turns an event color into chip background/text colors.
+- **Metrics** (`constants.ts`) — chip height/gap/insets, day-number geometry, header heights, palette. `CHIP_HEIGHT` is pinned to the value Tailtime derives from Skia font metrics so React-view chips match the canvas pixel-for-pixel.
+- **Recurrence expansion** (`recurrence.ts`) — expands recurring rules into occurrences per visible month grid (with fast-forward for distant ranges).
 
-In the output, you'll find options to open the app in a
+The Tailtime tab draws scenes onto a Skia canvas; the Wix and Flash tabs render the same scenes with the shared React `DayCell` (`src/components/day-cell.tsx`). The fixed chrome (month label + weekday bar) is one shared component (`month-chrome.tsx`) on every tab.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Library-specific shims
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+- **Wix**: the page month for a day cell is inferred from `state === 'disabled'` (extra days); `showSixWeeks` keeps the fixed 6-row grid.
+- **Flash**: the library yields a month's natural week count (5 or 6); 5-week months are padded with the scene's trailing row to hold the 6-row grid.
+- Multi-day span bars in the React `DayCell` are drawn once at their start cell and overflow across neighbour cells (cells are transparent; the page provides the background).
 
-## Get a fresh project
+## Scope
 
-When you're ready, run:
+Intentionally out of scope: drag-and-drop rescheduling and any server API. The Tailtime port strips the original's drag/reschedule machinery and swaps its query layer for the local store.
+
+## Run
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-### Other setup steps
-
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+All native dependencies (Skia, FlashList, AsyncStorage, datetimepicker) are Expo Go-compatible on SDK 57, or use a dev build.
