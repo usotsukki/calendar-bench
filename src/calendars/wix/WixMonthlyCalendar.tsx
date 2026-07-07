@@ -12,7 +12,7 @@
  * - `dayComponent` receives the date + `state`; the page's month is inferred
  *   from `state === 'disabled'` (extra days) to pick the right scene.
  */
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { CalendarList, type DateData } from 'react-native-calendars'
 import type { DayProps } from 'react-native-calendars/src/calendar/day'
@@ -22,15 +22,19 @@ import {
   formatMonthLabel,
   fromDateKey,
   HEADER_TOTAL_HEIGHT,
-  MONTHS_AFTER,
-  MONTHS_BEFORE,
   resolveMaxVisibleChips,
   startOfMonth,
   toDateKey,
 } from '@/calendar-core'
+
 import { DayCell } from '@/components/day-cell'
 import { MonthChrome } from '@/components/month-chrome'
 import { useMonthScenes } from '@/components/use-month-scenes'
+
+// wix's CalendarList degrades with very large ranges (it materialises every
+// month row up front); ±60 months is the pragmatic bench range here, unlike
+// the Tailtime/Flash tabs which run the full 2000–2199 window.
+const SCROLL_RANGE_MONTHS = 60
 
 function pageMonthForDay(day: Date, isExtraDay: boolean): Date {
   if (!isExtraDay) return startOfMonth(day)
@@ -49,6 +53,20 @@ export default function WixMonthlyCalendar() {
   const maxVisibleChips = resolveMaxVisibleChips(cellHeight, DEFAULT_MAX_VISIBLE_CHIPS)
   const { anchorMonth, getScene } = useMonthScenes(maxVisibleChips)
   const [label, setLabel] = useState(() => formatMonthLabel(anchorMonth))
+
+  // CalendarList's public ref type does not expose scrollToMonth.
+  const listRef = useRef<{ scrollToMonth?: (m: string) => void } | null>(null)
+
+  // Re-anchor when the measured page height settles (safe-area/tab bar) —
+  // CalendarList's initial position is computed against the stale height.
+  const lastPageHeightRef = useRef(0)
+  useEffect(() => {
+    if (pageHeight <= 0 || lastPageHeightRef.current === pageHeight) return
+    lastPageHeightRef.current = pageHeight
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToMonth?.(toDateKey(anchorMonth))
+    })
+  }, [anchorMonth, pageHeight])
 
   const handleLayout = useCallback((event: { nativeEvent: { layout: { width: number; height: number } } }) => {
     const { width, height } = event.nativeEvent.layout
@@ -98,7 +116,7 @@ export default function WixMonthlyCalendar() {
           dayContainer: { flex: 1, alignItems: 'center' },
         },
         'stylesheet.calendar.header': {
-          header: { flexDirection: 'row', margin: 0, padding: 0 },
+          header: { alignItems: 'stretch', flexDirection: 'row', justifyContent: 'flex-start', margin: 0, padding: 0 },
         },
       }) as const,
     [],
@@ -109,20 +127,31 @@ export default function WixMonthlyCalendar() {
       <MonthChrome label={label} />
       {pageHeight > 0 ? (
         <CalendarList
+          // Remount on viewport changes: CalendarList captures calendarHeight in
+          // a deps-less getItemLayout closure, so a post-mount height change
+          // (tab bar settling) leaves stale spacer math and misaligned landing.
+          key={`wix-${pageHeight}`}
           calendarHeight={pageHeight}
+          // Hard-cap each month item: wix only applies minHeight, so any chrome
+          // it adds would grow items past calendarHeight and break the
+          // index * height scroll math (snap + initial position drift).
+          calendarStyle={{ height: pageHeight, overflow: 'hidden', padding: 0 }}
           current={toDateKey(anchorMonth)}
           dayComponent={renderDay}
-          decelerationRate="fast"
+          hideArrows
+          ref={listRef}
           firstDay={1}
-          futureScrollRange={MONTHS_AFTER}
+          futureScrollRange={SCROLL_RANGE_MONTHS}
           hideDayNames
           hideExtraDays={false}
           onVisibleMonthsChange={handleVisibleMonthsChange}
-          pastScrollRange={MONTHS_BEFORE}
+          pastScrollRange={SCROLL_RANGE_MONTHS}
+          // CalendarList only forwards a subset of ScrollView props — snapToInterval
+          // is not among them, but pagingEnabled is (and equals the item height here).
+          pagingEnabled
           renderHeader={renderHeader}
           showsVerticalScrollIndicator={false}
           showSixWeeks
-          snapToInterval={pageHeight}
           theme={theme}
         />
       ) : null}
