@@ -1,0 +1,14 @@
+diff --git a/node_modules/react-native-calendars/src/dateutils.js b/node_modules/react-native-calendars/src/dateutils.js
+--- a/node_modules/react-native-calendars/src/dateutils.js
++++ b/node_modules/react-native-calendars/src/dateutils.js
+@@ -105,7 +105,9 @@ export function page(date, firstDayOfWeek = 0, showSixWeeks = false) {
+     const ldow = (fdow + 6) % 7;
+     firstDayOfWeek = firstDayOfWeek || 0;
+     const from = days[0].clone();
+-    const daysBefore = from.getDay();
++    // Six-weeks heuristic must count leading days in the configured week
++    // system, not Sunday-based - otherwise firstDay=1 grids get a 7th week row.
++    const daysBefore = (from.getDay() + 7 - fdow) % 7;
+     if (from.getDay() !== fdow) {
+         from.addDays(-(from.getDay() + 7 - fdow) % 7);
+     }
