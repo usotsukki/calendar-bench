@@ -1,10 +1,10 @@
 import { SafeAreaView } from 'react-native-safe-area-context'
-import TailtimeMonthlyCalendar from '@/calendars/tailtime/MonthlyCalendar'
+import FlashMonthlyCalendar from '@/calendars/flash/FlashMonthlyCalendar'
 
-export default function TailtimeTab() {
+export default function FlashTab() {
   return (
     <SafeAreaView edges={['top']} style={{ backgroundColor: '#FFFFFF', flex: 1 }}>
-      <TailtimeMonthlyCalendar />
+      <FlashMonthlyCalendar />
     </SafeAreaView>
   )
 }

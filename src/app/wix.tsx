@@ -1,10 +1,10 @@
 import { SafeAreaView } from 'react-native-safe-area-context'
-import TailtimeMonthlyCalendar from '@/calendars/tailtime/MonthlyCalendar'
+import WixMonthlyCalendar from '@/calendars/wix/WixMonthlyCalendar'
 
-export default function TailtimeTab() {
+export default function WixTab() {
   return (
     <SafeAreaView edges={['top']} style={{ backgroundColor: '#FFFFFF', flex: 1 }}>
-      <TailtimeMonthlyCalendar />
+      <WixMonthlyCalendar />
     </SafeAreaView>
   )
 }
