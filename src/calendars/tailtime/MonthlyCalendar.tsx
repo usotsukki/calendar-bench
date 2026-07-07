@@ -198,6 +198,20 @@ export default function TailtimeMonthlyCalendar() {
     [deriveFocusedMonth, scrollInitialized, scrollY],
   )
 
+  // ── Scroll correction ────────────────────────────────────────────────────
+  // The measured viewport can change after first layout (safe-area insets and
+  // the tab bar settle asynchronously). A pixel offset established against the
+  // old page height then points at the wrong month, so re-anchor the list on
+  // the focused month whenever the page height changes.
+  const lastPageHeightRef = useRef(0)
+  useEffect(() => {
+    if (pageHeight <= 0 || lastPageHeightRef.current === pageHeight) return
+    lastPageHeightRef.current = pageHeight
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToOffset({ animated: false, offset: focusedMonthIndexRef.current * pageHeight })
+    })
+  }, [pageHeight])
+
   // ── Cache pruning around the focused month ───────────────────────────────
   useEffect(() => {
     const lo = focusedMonthIndex - SCENE_CACHE_RADIUS
