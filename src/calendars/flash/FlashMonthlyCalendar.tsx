@@ -12,8 +12,8 @@
  *   months are padded with the scene's final row to hold the fixed 6-row grid.
  */
 import { toDateId, useCalendar, useCalendarList } from '@marceloterreiro/flash-calendar'
-import { FlashList } from '@shopify/flash-list'
-import React, { memo, useCallback, useRef, useState } from 'react'
+import { FlashList, type FlashListRef } from '@shopify/flash-list'
+import React, { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import {
   COLOR_IN_PAGE_LABEL,
@@ -104,8 +104,21 @@ export default function FlashMonthlyCalendar() {
     calendarPastScrollRangeInMonths: MONTHS_BEFORE,
   })
 
+  const listRef = useRef<FlashListRef<(typeof monthList)[number]>>(null)
   const scrollOffsetRef = useRef(0)
   const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const focusedIndexRef = useRef(initialMonthIndex)
+
+  // Re-anchor when the measured page height settles (safe-area/tab bar) —
+  // a pixel offset from the old height points at the wrong month otherwise.
+  const lastPageHeightRef = useRef(0)
+  useEffect(() => {
+    if (pageHeight <= 0 || lastPageHeightRef.current === pageHeight) return
+    lastPageHeightRef.current = pageHeight
+    requestAnimationFrame(() => {
+      listRef.current?.scrollToOffset({ animated: false, offset: focusedIndexRef.current * pageHeight })
+    })
+  }, [pageHeight])
 
   const handleLayout = useCallback((event: { nativeEvent: { layout: { width: number; height: number } } }) => {
     const { width, height } = event.nativeEvent.layout
@@ -122,6 +135,7 @@ export default function FlashMonthlyCalendar() {
         settleTimerRef.current = null
         if (pageHeight <= 0) return
         const index = Math.max(0, Math.min(monthList.length - 1, Math.round(scrollOffsetRef.current / pageHeight)))
+        focusedIndexRef.current = index
         const month = monthList[index]
         if (month) setLabel(formatMonthLabel(month.date))
       }, 100)
@@ -151,12 +165,17 @@ export default function FlashMonthlyCalendar() {
       <MonthChrome label={label} />
       {pageHeight > 0 ? (
         <FlashList
+          // Remount when the measured viewport settles (tab bar/safe area) so
+          // initialScrollIndex and the header label are computed against the
+          // final page height instead of a stale one.
+          key={`flash-${pageHeight}`}
           data={monthList}
           decelerationRate="fast"
           drawDistance={pageHeight * 3}
           initialScrollIndex={initialMonthIndex}
           keyExtractor={item => item.id}
           onScroll={handleScroll}
+          ref={listRef}
           renderItem={renderMonth}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
